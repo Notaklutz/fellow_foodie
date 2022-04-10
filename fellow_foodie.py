@@ -1,10 +1,10 @@
-import re, requests, bs4, time
+import re, requests, bs4, time, math, random
 from pathlib import Path
 import pyinputplus as pyip
 from datetime import datetime
 
 restaurants = []
-calculation_factors = {'price': 1.0/3.0, 'stars': 2.0/15.0, 'affinity': 6.0/15.0, 'recency': 2.0/15.0}
+calculation_factors = {'price': 4.0/15.0, 'stars': 2.0/15.0, 'affinity': 7.0/15.0, 'recency': 2.0/15.0}
 
 class Restaurant:
     def __init__(self, name, price, stars, affinity, recency, link):
@@ -39,13 +39,26 @@ def fill_list(name, price, stars, affinity, recency, link):
 def calculate_restaurant():
     if restaurants:
         restaurant_sums = []
-        
+        current_datetime = datetime.now()
+        # Stars and affinity values are modelled using y = calculation_factor*x^3
+        # Price values are modelled using y = -calculation_factor*2.3*e^x
+        # Recency values are modelled using y = calculation_factor*(5.0/36.0)*x^2
+        # Random factor ranges from 0.0 to 5.0
+        for i in range(len(restaurants)):
+            sum = -calculation_factors['price']*2.3*math.exp(restaurants[i].price)\
+                + calculation_factors['stars']*math.pow(restaurants[i].stars, 3.0)\
+                    + calculation_factors['affinity']*math.pow(restaurants[i].affinity, 3.0)\
+                        + calculation_factors['recency']*(5.0/36.0)*math.pow((current_datetime - restaurants[i].recency).days, 2)\
+                            + round(random.uniform(0.0, 5.0), 1)
+            restaurant_sums.append(sum)
+        print (restaurant_sums.index(max(restaurant_sums)))
     else:
         print('Failed. No Foodie file has been loaded into the program.')
         time.sleep(2)
 
 def new_file(seed_file):
-    seed_file = open(Path(seed_file)) # file used to seed the program
+    # file used to seed the program
+    seed_file = open(Path(seed_file))
 
     seed_text = seed_file.readlines()
 
@@ -105,6 +118,7 @@ while True:
     choice = pyip.inputNum('Please select from the above menu options: ', min=1, max=4)
     match choice:
         case 1:
+            calculate_restaurant()
             print('New restaurant!')
         case 2:
             seed_file = ''
