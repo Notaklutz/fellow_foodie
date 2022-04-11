@@ -18,6 +18,7 @@ class Restaurant:
 def load_file():
     foodie_file_path = Path('foodie.txt')
     if foodie_file_path.is_file():
+        restaurants.clear()
         foodie_text = open(foodie_file_path).readlines()
         for i in range(len(foodie_text)):
             # Read a line of the local foodie file
@@ -27,13 +28,11 @@ def load_file():
                 restaurant_info.remove('')
             # Remove the \n character from the link
             restaurant_info[5] = restaurant_info[5].replace('\n', '')
-            restaurants.clear()
             fill_list(restaurant_info[0], float(len(restaurant_info[1])), float(restaurant_info[2]), float(restaurant_info[3]), datetime.strptime(restaurant_info[4], '%d/%m/%Y'), restaurant_info[5])
     else:
         print('No existing "foodie.txt" file was found in the local folder.')
 
 def fill_list(name, price, stars, affinity, recency, link):
-    restaurants.clear()
     restaurants.append(Restaurant(name, price, stars, affinity, recency, link))
 
 def calculate_restaurant():
@@ -51,7 +50,16 @@ def calculate_restaurant():
                         + calculation_factors['recency']*(5.0/36.0)*math.pow((current_datetime - restaurants[i].recency).days, 2)\
                             + round(random.uniform(0.0, 5.0), 1)
             restaurant_sums.append(sum)
-        print (restaurant_sums.index(max(restaurant_sums)))
+            print(len(restaurants))
+        chosen_restaurant = restaurants[restaurant_sums.index(max(restaurant_sums))]
+        print('\nYou should dine at the following restaurant:\n')
+        print(chosen_restaurant.name)
+        print('Price: ' + int(chosen_restaurant.price)*'$')
+        print(f'Stars: {chosen_restaurant.stars}')
+        print(f'Affinity: {chosen_restaurant.affinity}')
+        print('Last time visited:', chosen_restaurant.recency.strftime('%d/%m/%Y'))
+        print('')
+        time.sleep(2)
     else:
         print('Failed. No Foodie file has been loaded into the program.')
         time.sleep(2)
@@ -68,14 +76,15 @@ def new_file(seed_file):
     program_file.close()
         
     program_file = open('foodie.txt', 'a')
-
+    restaurants.clear()
     for x in range(len(seed_text)):
         seed_name_regex = re.compile(r'(\S)*')
         seed_name = (seed_name_regex.search(seed_text[x])).group()
         
         seed_affinity_regex = re.compile(r'\s\d([.]\d)?')
-        seed_affinity_regex = re.compile(r'\d([.]\d)?')
         seed_affinity = (seed_affinity_regex.search(seed_text[x])).group()
+        seed_affinity_regex = re.compile(r'\d([.]\d)?')
+        seed_affinity = (seed_affinity_regex.search(seed_affinity)).group()
 
         seed_recency_regex = re.compile(r'\d\d/\d\d/\d\d\d\d')
         seed_recency = (seed_recency_regex.search(seed_text[x])).group()
@@ -119,7 +128,6 @@ while True:
     match choice:
         case 1:
             calculate_restaurant()
-            print('New restaurant!')
         case 2:
             seed_file = ''
             # Continue asking for the seed file name if the seed file does not exist
