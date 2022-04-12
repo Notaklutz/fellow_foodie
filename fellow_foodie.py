@@ -1,10 +1,9 @@
-import re, requests, bs4, time, math, random
+import re, requests, bs4, time, math, random, pprint, cf
 from pathlib import Path
 import pyinputplus as pyip
 from datetime import datetime
 
 restaurants = []
-calculation_factors = {'price': 4.0/15.0, 'stars': 2.0/15.0, 'affinity': 7.0/15.0, 'recency': 2.0/15.0}
 
 class Restaurant:
     def __init__(self, name, price, stars, affinity, recency, link):
@@ -79,6 +78,7 @@ def online_update():
     update_foodie_file()
 
 # Function to calculate the optimal restaurant to dine at
+# TO DO: Make function change future calculation factors
 def calculate_restaurant():
     if restaurants:
         restaurant_sums = []
@@ -88,10 +88,10 @@ def calculate_restaurant():
         # Recency values are modelled using y = calculation_factor*(5.0/36.0)*x^2
         # Random factor ranges from 0.0 to 5.0
         for i in range(len(restaurants)):
-            sum = -calculation_factors['price']*2.3*math.exp(restaurants[i].price)\
-                + calculation_factors['stars']*math.pow(restaurants[i].stars, 3.0)\
-                    + calculation_factors['affinity']*math.pow(restaurants[i].affinity, 3.0)\
-                        + calculation_factors['recency']*(5.0/36.0)*math.pow((current_datetime - restaurants[i].recency).days, 2)\
+            sum = -cf.calculation_factors['price']*2.3*math.exp(restaurants[i].price)\
+                + cf.calculation_factors['stars']*math.pow(restaurants[i].stars, 3.0)\
+                    + cf.calculation_factors['affinity']*math.pow(restaurants[i].affinity, 3.0)\
+                        + cf.calculation_factors['recency']*(5.0/36.0)*math.pow((current_datetime - restaurants[i].recency).days, 2)\
                             + round(random.uniform(0.0, 5.0), 1)
             restaurant_sums.append(sum)
         chosen_restaurant = restaurants[restaurant_sums.index(max(restaurant_sums))]
@@ -101,6 +101,26 @@ def calculate_restaurant():
         print(f'Stars: {chosen_restaurant.stars}')
         print(f'Affinity: {chosen_restaurant.affinity}')
         print('Last time visited: ' + chosen_restaurant.recency.strftime('%d/%m/%Y') + '\n')
+
+        if pyip.inputYesNo('Will you be visiting this restaurant today? Yes or no. ') == 'yes':
+            print("We are so glad we could help you decide! The Foodie file will be automatically updated with today's date.")
+            chosen_restaurant.recency = current_datetime
+            update_foodie_file()
+        else:
+            print('We are sorry you did not like our recommendation. Why did you not choose this restaurant?\n')
+            print('1 - The price of this restaurant is too high')
+            print('2 - The Yelp rating of this restaurant is too low')
+            print('3 - My personal rating of this restaurant is too low')
+            print('4 - I dined here too recently to go back')
+            print('5 - Other\n')
+            reason = pyip.inputInt('Please select from the above options: ', min=1, max=5)
+            match reason:
+                case 1:
+                    if (cf.calculation_factors['affinity'] - 0.01 >= 0 and cf.calculation_factors['stars'] - 0.01 >= 0 and cf.calculation_factors['recency'] - 0.01 >= 0 and cf.calculation_factors['price'] + 0.03 <= 1):
+                        cf.calculation_factors['affinity'] -= 0.01
+                        cf.calculation_factors['stars'] -= 0.01
+                        cf.calculation_factors['recency'] -= 0.01
+                        cf.calculation_factors['price'] += 0.03
         time.sleep(2)
     else:
         print('Failed. No Foodie file has been loaded into the program.')
@@ -142,7 +162,7 @@ while True:
     print('2 - New Foodie File from Seed')
     print('3 - Update Foodie File with Online Information')
     print('4 - Add New Restaurant to Foodie File')
-    print('5 - Exit')
+    print('5 - Exit\n')
     load_file()
     choice = pyip.inputNum('Please select from the above menu options: ', min=1, max=5)
     match choice:
