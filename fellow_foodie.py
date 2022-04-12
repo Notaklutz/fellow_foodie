@@ -35,6 +35,45 @@ def load_file():
 def fill_list(name, price, stars, affinity, recency, link):
     restaurants.append(Restaurant(name, price, stars, affinity, recency, link))
 
+# Function to output data from restaurants list to foodie file
+def update_foodie_file():
+    # clear foodie file
+    foodie_file = open('foodie.txt', 'w')
+    foodie_file.write('')
+    foodie_file.close()
+
+    foodie_file = open('foodie.txt', 'a')
+    for r in restaurants:
+        foodie_file.write(r.name + '*' + int(r.price)*'$' + '*' + str(r.stars) + '*' + str(r.affinity) + '*' + r.recency.strftime('%d/%m/%Y') + '*' + r.link + '\n')
+    foodie_file.close()
+
+# Function to update foodie file with the latest information from Yelp
+def online_update():
+    for r in restaurants:
+        res = requests.get("https://www.yelp.ca/biz/" + r.link)
+        try:
+            res.raise_for_status()
+        except Exception as exc:
+            print('There was a problem: %s' % (exc))
+
+        place_soup = bs4.BeautifulSoup(res.text, 'html.parser')
+
+        place_name = place_soup.select('body > yelp-react-root > div:nth-child(1) > div.photoHeader__09f24__nPvHp.border-color--default__09f24__NPAKY > div.photo-header-content-container__09f24__jDLBB.border-color--default__09f24__NPAKY > div.photo-header-content__09f24__q7rNO.padding-r2__09f24__ByXi4.border-color--default__09f24__NPAKY > div > div > div.headingLight__09f24__N86u1.margin-b1__09f24__vaLrm.border-color--default__09f24__NPAKY > h1')
+        r.name = place_name[0].getText()
+
+        place_price = place_soup.select('body > yelp-react-root > div:nth-child(1) > div.photoHeader__09f24__nPvHp.border-color--default__09f24__NPAKY > div.photo-header-content-container__09f24__jDLBB.border-color--default__09f24__NPAKY > div.photo-header-content__09f24__q7rNO.padding-r2__09f24__ByXi4.border-color--default__09f24__NPAKY > div > div > span:nth-child(4) > span')
+        r.price = float(len(place_price[0].getText().strip()))
+
+        place_stars = place_soup.select('body > yelp-react-root > div:nth-child(1) > div.photoHeader__09f24__nPvHp.border-color--default__09f24__NPAKY > div.photo-header-content-container__09f24__jDLBB.border-color--default__09f24__NPAKY > div.photo-header-content__09f24__q7rNO.padding-r2__09f24__ByXi4.border-color--default__09f24__NPAKY > div > div > div.arrange__09f24__LDfbs.gutter-1-5__09f24__vMtpw.vertical-align-middle__09f24__zU9sE.margin-b2__09f24__CEMjT.border-color--default__09f24__NPAKY > div:nth-child(1) > span > div')
+        star_rating_regex = re.compile(r'\d(.\d)? star rating')
+        stars = (star_rating_regex.search(str(place_stars[0]))).group()
+        star_rating_regex = re.compile(r'\d(.\d)?')
+        stars = (star_rating_regex.search(str(place_stars[0]))).group()
+        r.stars = float(stars)
+
+    update_foodie_file()
+
+# Function to calculate the optimal restaurant to dine at
 def calculate_restaurant():
     if restaurants:
         restaurant_sums = []
@@ -57,25 +96,19 @@ def calculate_restaurant():
         print('Price: ' + int(chosen_restaurant.price)*'$')
         print(f'Stars: {chosen_restaurant.stars}')
         print(f'Affinity: {chosen_restaurant.affinity}')
-        print('Last time visited:', chosen_restaurant.recency.strftime('%d/%m/%Y'))
-        print('')
+        print('Last time visited: ' + chosen_restaurant.recency.strftime('%d/%m/%Y') + '\n')
         time.sleep(2)
     else:
-        print('Failed. No Foodie file has been loaded into the program.')
+        print('Failed. No foodie file has been loaded into the program.')
         time.sleep(2)
 
+# Creates a new foodie file from a seed file
 def new_file(seed_file):
     # file used to seed the program
     seed_file = open(Path(seed_file))
 
     seed_text = seed_file.readlines()
 
-    # clear program file
-    program_file = open('foodie.txt', 'w')
-    program_file.write('')
-    program_file.close()
-        
-    program_file = open('foodie.txt', 'a')
     restaurants.clear()
     for x in range(len(seed_text)):
         seed_name_regex = re.compile(r'(\S)*')
@@ -89,33 +122,11 @@ def new_file(seed_file):
         seed_recency_regex = re.compile(r'\d\d/\d\d/\d\d\d\d')
         seed_recency = (seed_recency_regex.search(seed_text[x])).group()
 
-        res = requests.get("https://www.yelp.ca/biz/" + seed_name)
+        fill_list(None, None, None, float(seed_affinity), datetime.strptime(seed_recency, '%d/%m/%Y'), seed_name)
 
-        try:
-            res.raise_for_status()
-        except Exception as exc:
-            print('There was a problem: %s' % (exc))
+    online_update()
 
-        place_soup = bs4.BeautifulSoup(res.text, 'html.parser')
-
-        place_name = place_soup.select('body > yelp-react-root > div:nth-child(1) > div.photoHeader__09f24__nPvHp.border-color--default__09f24__NPAKY > div.photo-header-content-container__09f24__jDLBB.border-color--default__09f24__NPAKY > div.photo-header-content__09f24__q7rNO.padding-r2__09f24__ByXi4.border-color--default__09f24__NPAKY > div > div > div.headingLight__09f24__N86u1.margin-b1__09f24__vaLrm.border-color--default__09f24__NPAKY > h1')
-        name = place_name[0].getText()
-
-        place_stars = place_soup.select('body > yelp-react-root > div:nth-child(1) > div.photoHeader__09f24__nPvHp.border-color--default__09f24__NPAKY > div.photo-header-content-container__09f24__jDLBB.border-color--default__09f24__NPAKY > div.photo-header-content__09f24__q7rNO.padding-r2__09f24__ByXi4.border-color--default__09f24__NPAKY > div > div > div.arrange__09f24__LDfbs.gutter-1-5__09f24__vMtpw.vertical-align-middle__09f24__zU9sE.margin-b2__09f24__CEMjT.border-color--default__09f24__NPAKY > div:nth-child(1) > span > div')
-        star_rating_regex = re.compile(r'\d(.\d)? star rating')
-        stars = (star_rating_regex.search(str(place_stars[0]))).group()
-        star_rating_regex = re.compile(r'\d(.\d)?')
-        stars = (star_rating_regex.search(str(place_stars[0]))).group()
-
-        place_price = place_soup.select('body > yelp-react-root > div:nth-child(1) > div.photoHeader__09f24__nPvHp.border-color--default__09f24__NPAKY > div.photo-header-content-container__09f24__jDLBB.border-color--default__09f24__NPAKY > div.photo-header-content__09f24__q7rNO.padding-r2__09f24__ByXi4.border-color--default__09f24__NPAKY > div > div > span:nth-child(4) > span')
-        price = place_price[0].getText().strip()
-
-        program_file.write(name + '*' + price + '*' + stars + '*' + seed_affinity + '*' + seed_recency + '*' + seed_name + '\n')
-
-        fill_list(name, float(len(price)), float(stars), float(seed_affinity), datetime.strptime(seed_recency, '%d/%m/%Y'), seed_name)
-
-    program_file.close()
-
+# Main
 while True:
     choice = 0
     print('Fellow Foodie'.center(50, '-'))
