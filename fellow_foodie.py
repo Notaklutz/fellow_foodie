@@ -21,7 +21,7 @@ def load_file():
         restaurants.clear()
         foodie_text = open(foodie_file_path).readlines()
         for i in range(len(foodie_text)):
-            # Read a line of the local foodie file
+            # Read a line of the local Foodie file
             restaurant_info = re.findall((r'[^*]*'), foodie_text[i])
             # Remove empty strings from array
             for j in range(6):
@@ -35,7 +35,7 @@ def load_file():
 def fill_list(name, price, stars, affinity, recency, link):
     restaurants.append(Restaurant(name, price, stars, affinity, recency, link))
 
-# Function to output data from restaurants list to foodie file
+# Function to output data from restaurants list to Foodie file
 def update_foodie_file():
     # clear foodie file
     foodie_file = open('foodie.txt', 'w')
@@ -47,7 +47,7 @@ def update_foodie_file():
         foodie_file.write(r.name + '*' + int(r.price)*'$' + '*' + str(r.stars) + '*' + str(r.affinity) + '*' + r.recency.strftime('%d/%m/%Y') + '*' + r.link + '\n')
     foodie_file.close()
 
-# Function to update foodie file with the latest information from Yelp
+# Function to update Foodie file with the latest information from Yelp
 def online_update():
     for r in restaurants:
         res = requests.get("https://www.yelp.ca/biz/" + r.link)
@@ -62,7 +62,12 @@ def online_update():
         r.name = place_name[0].getText()
 
         place_price = place_soup.select('body > yelp-react-root > div:nth-child(1) > div.photoHeader__09f24__nPvHp.border-color--default__09f24__NPAKY > div.photo-header-content-container__09f24__jDLBB.border-color--default__09f24__NPAKY > div.photo-header-content__09f24__q7rNO.padding-r2__09f24__ByXi4.border-color--default__09f24__NPAKY > div > div > span:nth-child(4) > span')
-        r.price = float(len(place_price[0].getText().strip()))
+        
+        # Max $ amount is 4
+        if float(len(place_price[0].getText().strip())) >= 5:
+            r.price = 4.0
+        else:
+            r.price = float(len(place_price[0].getText().strip()))
 
         place_stars = place_soup.select('body > yelp-react-root > div:nth-child(1) > div.photoHeader__09f24__nPvHp.border-color--default__09f24__NPAKY > div.photo-header-content-container__09f24__jDLBB.border-color--default__09f24__NPAKY > div.photo-header-content__09f24__q7rNO.padding-r2__09f24__ByXi4.border-color--default__09f24__NPAKY > div > div > div.arrange__09f24__LDfbs.gutter-1-5__09f24__vMtpw.vertical-align-middle__09f24__zU9sE.margin-b2__09f24__CEMjT.border-color--default__09f24__NPAKY > div:nth-child(1) > span > div')
         star_rating_regex = re.compile(r'\d(.\d)? star rating')
@@ -89,7 +94,6 @@ def calculate_restaurant():
                         + calculation_factors['recency']*(5.0/36.0)*math.pow((current_datetime - restaurants[i].recency).days, 2)\
                             + round(random.uniform(0.0, 5.0), 1)
             restaurant_sums.append(sum)
-            print(len(restaurants))
         chosen_restaurant = restaurants[restaurant_sums.index(max(restaurant_sums))]
         print('\nYou should dine at the following restaurant:\n')
         print(chosen_restaurant.name)
@@ -99,10 +103,11 @@ def calculate_restaurant():
         print('Last time visited: ' + chosen_restaurant.recency.strftime('%d/%m/%Y') + '\n')
         time.sleep(2)
     else:
-        print('Failed. No foodie file has been loaded into the program.')
+        print('Failed. No Foodie file has been loaded into the program.')
         time.sleep(2)
 
-# Creates a new foodie file from a seed file
+# Creates a new Foodie file from a seed file
+# TO DO: Error checking of links and recency
 def new_file(seed_file):
     # file used to seed the program
     seed_file = open(Path(seed_file))
@@ -122,20 +127,24 @@ def new_file(seed_file):
         seed_recency_regex = re.compile(r'\d\d/\d\d/\d\d\d\d')
         seed_recency = (seed_recency_regex.search(seed_text[x])).group()
 
-        fill_list(None, None, None, float(seed_affinity), datetime.strptime(seed_recency, '%d/%m/%Y'), seed_name)
+        # only include in list if affinity is between 1 and 5 inclusive
+        if float(seed_affinity) <= 5 and float(seed_affinity) >= 1:
+            fill_list(None, None, None, float(seed_affinity), datetime.strptime(seed_recency, '%d/%m/%Y'), seed_name)
 
     online_update()
 
 # Main
+# TO DO: Add ability to modify Foodie file in other ways
 while True:
     choice = 0
     print('Fellow Foodie'.center(50, '-'))
     print('1 - Calculate a Restaurant Recommendation')
     print('2 - New Foodie File from Seed')
     print('3 - Update Foodie File with Online Information')
-    print('4 - Exit')
+    print('4 - Add New Restaurant to Foodie File')
+    print('5 - Exit')
     load_file()
-    choice = pyip.inputNum('Please select from the above menu options: ', min=1, max=4)
+    choice = pyip.inputNum('Please select from the above menu options: ', min=1, max=5)
     match choice:
         case 1:
             calculate_restaurant()
@@ -156,8 +165,21 @@ while True:
             print('Success! New Foodie file created.\n')
             time.sleep(2)
         case 3:
-            print('Update!\n')
+            print('Processing...')
+            online_update()
+            print('Success! Foodie file updated.\n')
+            time.sleep(2)
         case 4:
+            link = pyip.inputURL('Enter the full Yelp URL of the restaurant: ')
+            link = re.search(r'(?<=biz/)(\S)*', link).group()
+            affinity = pyip.inputFloat('Enter your personal rating of the restaurant: ', min=1, max=5)
+            recency = pyip.inputDate('Enter the last time you dined at the restaurant in the MM/DD/YYYY format: ')
+            print('Processing...')
+            fill_list(None, None, None, affinity, recency, link)
+            online_update()
+            print('Success! Foodie file updated.\n')
+            time.sleep(2)
+        case 5:
             print('Thank you for using Fellow Foodie!')
             break
         case _:
